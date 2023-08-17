@@ -1,27 +1,62 @@
 version: "3"
 
 services:
+  # Service for WireGuard UI
   wg:
-    build: .
-    #image: ngoduykhanh/wireguard-ui:latest
+    # Building from the current directory
+    #build: .
+    # Using the specified Docker image
+    image: ngoduykhanh/wireguard-ui:latest
+    # Naming the container as 'wgui'
     container_name: wgui
+    # Adding the NET_ADMIN capability for networking tasks
     cap_add:
       - NET_ADMIN
-    network_mode: host
+    # Using the dedicated wg_network
+    networks:
+      - wg_network
     environment:
+      # Email settings for notifications or user management
       - SENDGRID_API_KEY
       - EMAIL_FROM_ADDRESS
       - EMAIL_FROM_NAME
+      # Session management
       - SESSION_SECRET
-      - WGUI_USERNAME=alpha
-      - WGUI_PASSWORD=this-unusual-password
+      # User authentication details
+      - WGUI_USERNAME=admin
+      - WGUI_PASSWORD=admin
+      # Placeholder for WireGuard configuration template
       - WG_CONF_TEMPLATE
+      # Disabling permissions to start or restart the WireGuard service from the UI
       - WGUI_MANAGE_START=false
       - WGUI_MANAGE_RESTART=false
     logging:
+      # Using the json-file logging driver
       driver: json-file
       options:
+        # Setting a maximum log file size
         max-size: 50m
     volumes:
-      - ./db:/app/db
-      - /etc/wireguard:/etc/wireguard
+      # Mapping the host's db directory to the container's /app/db for persistent storage
+      - wg_data:/app/db
+      # Mapping the host's wireguard configuration to the container's /etc/wireguard
+      - wg_data:/etc/wireguard
+      # Using the dedicated wg_data volume
+      - wg_data:/app/data
+    ports:
+      - "8889:5000"
+      - "51820:51820/udp"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Defining the dedicated network
+networks:
+  wg_network:
+    driver: bridge
+
+# Defining the dedicated volume
+volumes:
+  wg_data:
